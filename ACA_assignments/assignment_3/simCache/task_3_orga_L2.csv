@@ -1,0 +1,4 @@
+orga,fibonacci,matmul,memcopy,pi,whetstone
+both unified,0.4132,0.2325,0.1789,0.2330,0.4483
+L1 split L2 unified,0.4065,0.0485,0.1711,0.2126,0.4467
+both split,0.6729,0.0767,0.6184,0.6412,0.7012

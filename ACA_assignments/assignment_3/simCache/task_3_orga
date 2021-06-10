@@ -1,0 +1,39 @@
+#!/bin/bash
+
+level=L2
+fileName=task_3_orga_$level.csv
+benchmarks=(fibonacci matmul memcopy pi whetstone)
+printf "orga,fibonacci,matmul,memcopy,pi,whetstone\n" > $fileName #write header
+
+# case 1: both unified
+printf "both unified" >> $fileName
+for bm in "${benchmarks[@]}"
+do	
+	# L1 unified 16KB, L2 unified 256KB (default)
+	./sim-cache -redir:sim temp.txt -cache:il1 dl1 -cache:dl1 ul1:128:32:4:l ./benchmarks/$bm
+	missRate=$(grep ul2.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+	printf ",$missRate" >> $fileName
+done
+printf "\n" >> $fileName
+
+# case 2: L1 split L2 unified
+printf "L1 split L2 unified" >> $fileName
+for bm in "${benchmarks[@]}"
+do	
+	# L1 8KB instr 8KB data, L2 unified 256KB (default)
+	./sim-cache -redir:sim temp.txt -cache:il1 il1:64:32:4:l -cache:dl1 dl1:64:32:4:l ./benchmarks/$bm
+	missRate=$(grep ul2.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+	printf ",$missRate" >> $fileName
+done
+printf "\n" >> $fileName
+
+# case 3: both split
+printf "both split" >> $fileName
+for bm in "${benchmarks[@]}"
+do	
+	# L1 8KB instr 8KB data, L2 128KB instr 128KB data
+	./sim-cache -redir:sim temp.txt -cache:il1 il1:64:32:4:l -cache:dl1 dl1:64:32:4:l -cache:il2 il2:1024:32:4:l -cache:dl2 dl2:1024:32:4:l ./benchmarks/$bm
+	missRate=$(grep dl2.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+	printf ",$missRate" >> $fileName
+done
+printf "\n" >> $fileName

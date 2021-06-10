@@ -1,0 +1,18 @@
+#!/bin/bash
+
+fileName=task_4_replacement.csv
+replace=(f l r)
+benchmarks=(fibonacci matmul memcopy pi whetstone)
+printf "policy,fibonacci,matmul,memcopy,pi,whetstone\n" > $fileName #write header
+
+for rep in "${replace[@]}"
+do
+	printf "$rep" >> $fileName
+	for bm in "${benchmarks[@]}"
+	do
+		./sim-cache -redir:sim temp.txt -cache:il1 dl1 -cache:dl1 ul1:16:32:16:$rep -cache:il2 none -cache:dl2 none ./benchmarks/$bm
+		missRate=$(grep ul1.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+		printf ",$missRate" >> $fileName
+	done
+	printf "\n" >> $fileName
+done

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+bm=whetstone
+blockSize=(8 16 32 64)
+numSets=(1024 2048 4096 8192 16384 32768 65536 131072)
+fileName=task_1_size_$bm.csv
+printf "%s\nblockSize,nsets1k,nsets2k,nsets4k,nsets8k,nsets16k,nsets32k,nsets64k,nsets128k\n" "$bm" > $fileName #write header
+
+for bsize in "${blockSize[@]}"
+do
+	printf "$bsize" >> $fileName
+	for nsets in "${numSets[@]}"
+	do
+		./sim-cache -cache:dl1 dl1:$nsets:$bsize:1:l ./benchmarks/$bm 2>temp.txt
+		missRate=$(grep dl1.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+		printf ",$missRate" >> $fileName
+	done
+	printf "\n" >> $fileName
+done

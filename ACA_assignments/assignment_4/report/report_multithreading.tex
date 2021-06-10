@@ -1,0 +1,179 @@
+\documentclass[a4paper,oneside,12pt,titlepage,parskip=true]{scrartcl}   %Grundeinstellungen
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx} 
+\usepackage{subfigure}   
+\usepackage{multirow}                      
+\usepackage{float}
+\usepackage[section]{placeins}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+%%BibTex nützlich zum Zitieren. Kann bei Nichtgebrauch auch auskommentiert werden.
+%\usepackage{cite}
+%Colorpackage
+\usepackage[usenames,dvipsnames]{xcolor}
+%Listings um Scilabquellcode leichter einzufügen
+\usepackage{listings}
+\lstset{%
+	 basicstyle=\scriptsize\ttfamily,
+   keywordstyle=\bfseries\ttfamily\color{NavyBlue},
+   stringstyle=\color{Rhodamine}\ttfamily,
+   commentstyle=\color{Green}\ttfamily,
+   emph={square}, 
+   emphstyle=\color{blue}\texttt,
+   emph={[2]root,base},
+   emphstyle={[2]\color{yac}\texttt},
+   language=C++,%
+   tabsize=4,%
+   basicstyle=\footnotesize\ttfamily,%
+   numbers=left,%
+   numberfirstline,%
+   breaklines=true,%
+   breakatwhitespace=true,%
+   linewidth=\textwidth,%
+   xleftmargin=0.075\textwidth,%
+   frame=tlrb,%
+   captionpos=b%
+}
+
+
+%Abstand zwischen Absätzen, Zeilenabstände
+\voffset26pt 
+\usepackage{setspace}
+\onehalfspacing
+
+%
+%%Hier beginnt das Dokument
+ \begin{document}
+\pagenumbering{roman}
+
+\titlehead
+{
+\begin{tabular}{ll}
+\begin{minipage}{0.45\textwidth}
+ \begin{figure}[H]
+ \raggedright
+  \includegraphics[scale=.7]{img/AES-logo.png}\\
+\end{figure}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{figure}[H]
+\raggedleft
+\includegraphics[scale=.7]{img/tu-logo}\\
+\end{figure}
+\end{minipage}
+\end{tabular}
+
+\vspace{.5cm}
+  \small
+      {
+	Technische Universität Berlin\\
+	Faculty IV\\
+	Dept. of Computer Engineering and Microelectronics\\
+	Embedded Systems Architecture Group}
+
+\vspace{.5cm}
+  \small
+	  {
+	Advanced Computer Architecture Course\\
+	Instructor: Nadjib Mammeri\\
+	Summer Semester 2018}
+}
+
+\title {Report}
+\subtitle{4th Assignment\\
+Multithreading}
+\author{Schenck, Tianhao Alissa\\
+Mor, Keyshav}
+
+\date{\today\\*[60pt]}   %Stellt das Datum ein /today wählt automatisch das aktuelle Datum, kann aber auch manuell eingestellt werden
+
+\maketitle  %Erstellt das Titelblatt wie oben definiert
+
+\thispagestyle{empty}
+
+\newpage
+
+%Einstellungen zur Kopf- und Fußzeile
+\pagestyle{plain}
+
+
+\pagenumbering{arabic}
+\section{Introduction}
+In this assignment we worked with a sequential code implementing the LU decomposition algorithm.
+The objective of this algorithm is to factor a matrix A as the product of a lower triangular matrix L and an upper triangular matrix U.
+The algorithm that was applied in this assignment resulted in a unit lower triangular matrix,
+i.e. the diagonal elements of L are ones, as shown in equation \ref{eq:LUD}.
+The code of the sequential program is shown in listing \ref{list:seq}.
+First, we parallelized this sequential LU Decomposition program with OpenMP directives.
+Then we modified the algorithm and parallelized it again using OpenMP to provide an optimized version for best performance.
+
+\begin{equation}
+\begin{bmatrix}
+a_{11} & a_{12} &  \dots & a_{1n}\\
+a_{21} & \ddots		&		& \vdots\\
+\vdots	& 			& \ddots 	& \vdots\\
+\vdots	&			&			& \vdots\\
+a_{n1} & \dots		& \dots		 & a_{nn}
+\end{bmatrix}
+=
+\begin{bmatrix}
+1		&	0	& 0 	& \dots & 0\\
+l_{21} 	& 	1 	& 0 	& \dots & 0\\
+l_{31} & l_{32} & 1 	& \dots & 0\\
+\vdots	& \vdots& \vdots& \ddots & \vdots\\
+l_{n1} & l_{n2} & l_{n3} & \dots & 1
+\end{bmatrix}
+\cdot
+\begin{bmatrix}
+u_{11}	& u_{12} & u_{13} & \dots & u_{1n}\\
+0		& u_{22} & u_{23} & \dots & u_{2n}\\
+0		& 0		& u_{33}  & \dots & u_{3n}\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+0 		& 0		& 0 	& \dots	 & u_{nn}
+\end{bmatrix}
+\label{eq:LUD}
+\end{equation}
+
+\section{Parallized LU Decomposition}
+As a first step of Parallelization we have to identify these parts of the program that can run in parallel. 
+The algorithm shown in listing \ref{list:seq} reads values in the i-th loop iteration that have been written in the (i-1)-th iteration, 
+hence the iterations of i-loop can not run in parallel. 
+The two j-loops iterate through the elements of one row or column of the matrix.
+The operations that are performed on the elements in one row or column are independent, 
+thus the iterations of both j-loops can be parallelized, 
+but the upper j-loop has to finish before the lower one can start executing and vice versa.
+Also the k-loops that are nested in the j-loops need to run in order because they accumulate a value in the variable sum.
+
+With this knowledge in mind we insert the OpenMP directive \#pragma omp parallel for private(j,k,sum) shared(a,size,i) above the j-loops to implement the multithreading.
+This directive opens a parallel contruct. 
+The parallel construct creates a team of threads and the iterations of the j-loops will be divided among the threads. 
+Unless otherwise specified the number of threads equals the number of cores.
+When a thread encounters the nested k-loop, it will executed it in order, because no new parallel construct is opened here.
+OpenMP is a parallel programming model for shared-memory multi-processor systems. 
+In order to achieve correct program behavior we have to specify which variables are shared and which ones are private.
+The variables \textit{a}, \textit{size} and \textit{i} need to be shared, because all threads operate on the same \textit{a}, \textit{size} and \textit{i}. 
+The algorithm would not work, if each thread had a local copy with a possibly different value.
+The variables \textit{j}, \textit{k} and \textit{sum} need to be private in order for the iterations of the j-loop to run in parallel.
+
+The parallelized program 'lud\_par.cpp' is part of the deliverables.
+
+\section{Optimized LU Decomposition}
+\section{Evaluation of Speedup}
+
+\newpage
+\appendix
+\section{Sequential Program Code}
+\lstinputlisting[caption={lud\_seq.cpp}, label={list:seq}]{lud_seq.cpp}
+
+
+
+
+
+
+\end{document}

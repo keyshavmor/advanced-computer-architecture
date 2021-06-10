@@ -1,0 +1,23 @@
+#!/bin/bash
+
+cacheSize=8192 #in bytes (8KiB)
+bsize=32 #block size in bytes
+fileName=task_2_assoc.csv
+
+associativity=( 1 2 4 8 16 )
+benchmarks=(fibonacci matmul memcopy pi whetstone)
+printf "associativity,fibonacci,matmul,memcopy,pi,whetstone\n" > $fileName #write header
+
+for assoc in "${associativity[@]}"
+do
+	printf "$assoc" >> $fileName
+	nsets=$((cacheSize / (assoc * bsize)))
+	for bm in "${benchmarks[@]}"
+	do	
+		./sim-cache -cache:dl1 dl1:$nsets:$bsize:$assoc:l ./benchmarks/$bm 2>temp.txt
+		missRate=$(grep dl1.miss_rate temp.txt | egrep -o "[0-9]+\.[0-9]+")
+		printf ",$missRate" >> $fileName
+	done
+	printf "\n" >> $fileName
+done
+
